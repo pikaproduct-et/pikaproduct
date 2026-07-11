@@ -73,7 +73,7 @@ This repo is being built in phases, in order — each one only makes sense once 
 
 - [x] **Phase 0 -- Foundations.** Repo scaffold, Supabase wiring, DB schema (`suppliers`, `products`, `listings`, `stock_state`).
 - [x] **Phase 1 -- Supplier stock-update flow.** Auth + onboarding, one-tap mobile update dashboard, offline-first IndexedDB outbox + auto-sync, SMS webhook fallback hitting the same `upsert_stock_state` function as the app.
-- [ ] **Phase 2 -- Freshness/decay logic.** Confidence-timestamp-to-staleness computation, category-specific windows.
+- [x] **Phase 2 -- Freshness/decay logic.** Category-specific decay windows on `products`, `listing_status` view computing fresh/aging/stale/unconfirmed at read time, freshness badge on the supplier dashboard.
 - [ ] **Phase 3 -- Verification workflow.** Manual supplier verification (badge, admin tooling).
 - [ ] **Phase 4 -- Buyer search & compare.** Location-first search (PostGIS proximity), confidence indicators, side-by-side compare view.
 - [ ] **Phase 5 -- Reservation/inquiry flow.** Structured reserve/pickup requests, click-to-call/WhatsApp.
@@ -87,3 +87,9 @@ Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope 
 - **SMS webhook** lives at `POST /api/sms/webhook`, built against Africa's Talking's inbound-message shape (form-encoded `from`/`text`). Point your SMS gateway's inbound webhook URL at `https://<your-deployment>/api/sms/webhook` once you have a provider account. Message format: `STOCK <CODE> <QTY>`, e.g. `STOCK REBAR12 50` — codes are in `products.sms_code` (migration `0003`). Outbound confirmation replies are stubbed (logged, not sent) until a gateway API key is wired in — see `sendSmsReply` in `src/app/api/sms/webhook/route.ts`.
 - **Offline outbox** (`src/lib/offline/outbox.ts`) is plain IndexedDB, no dependency. Updates save locally first and sync automatically on reconnect; last-write-wins ordering is enforced server-side in `upsert_stock_state` (migration `0003`) by comparing client-supplied timestamps, so a late-syncing offline update can never clobber a newer one.
 - Run the new migrations (`0003`, `0004`) the same way as `0001`/`0002` — `supabase db push` or paste into the SQL Editor, in order.
+
+## Phase 2 notes
+
+- **`listing_status`** (migration `0005`) is the single read model for freshness — computed with `security_invoker = true` so it enforces the same RLS as the underlying tables rather than leaking unverified/inactive suppliers' data. It's built to be reused by buyer search in Phase 4, not just the supplier dashboard.
+- **Decay windows are per-category**, not global: `products.freshness_window_hours` (rebar 48h, cement 120h by default). Aging starts at 1x the window, stale at 2x. Adjust per-category or per-product as real usage data comes in.
+- The dashboard's freshness badge re-renders its relative-time text every 60s client-side so it doesn't visibly go stale while the tab sits open, even though the fresh/aging/stale classification itself is computed server-side per request.

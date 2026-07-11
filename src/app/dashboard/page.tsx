@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
-import { StockDashboard, type ListingWithStock } from "@/components/StockDashboard";
+import { StockDashboard } from "@/components/StockDashboard";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -26,13 +26,10 @@ export default async function DashboardPage() {
   }
 
   const { data: listings } = await supabase
-    .from("listings")
-    .select(
-      "id, price_per_unit, currency, product:products(name, unit, sms_code), stock_state(quantity, confidence_timestamp, updated_by)"
-    )
+    .from("listing_status")
+    .select("*")
     .eq("supplier_id", supplier.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: true });
+    .eq("is_active", true);
 
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
@@ -60,7 +57,7 @@ export default async function DashboardPage() {
           + Add a product to your listings
         </Link>
 
-        <StockDashboard listings={(listings as ListingWithStock[]) ?? []} />
+        <StockDashboard listings={listings ?? []} />
       </div>
     </div>
   );

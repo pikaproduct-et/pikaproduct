@@ -112,7 +112,28 @@ export interface Database {
         ];
       };
     };
-    Views: Record<string, never>;
+    Views: {
+      listing_status: {
+        Row: {
+          listing_id: string;
+          supplier_id: string;
+          product_id: string;
+          price_per_unit: number;
+          currency: string;
+          is_active: boolean;
+          product_name: string;
+          product_unit: string;
+          product_category: string;
+          product_sms_code: string | null;
+          freshness_window_hours: number;
+          quantity: number | null;
+          confidence_timestamp: string | null;
+          updated_by: StockUpdateSource | null;
+          freshness_status: "fresh" | "aging" | "stale" | "unconfirmed";
+        };
+        Relationships: [];
+      };
+    };
     Functions: {
       upsert_stock_state: {
         Args: {
