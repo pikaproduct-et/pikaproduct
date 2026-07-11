@@ -72,7 +72,7 @@ The schema deliberately separates the near-static catalog (`products`, `listings
 This repo is being built in phases, in order — each one only makes sense once the previous is solid:
 
 - [x] **Phase 0 -- Foundations.** Repo scaffold, Supabase wiring, DB schema (`suppliers`, `products`, `listings`, `stock_state`).
-- [ ] **Phase 1 -- Supplier stock-update flow.** One-tap mobile update, offline-first local write + sync, SMS/USSD fallback hitting the same backend logic. The riskiest, most important piece -- build and prove this before anything buyer-facing.
+- [x] **Phase 1 -- Supplier stock-update flow.** Auth + onboarding, one-tap mobile update dashboard, offline-first IndexedDB outbox + auto-sync, SMS webhook fallback hitting the same `upsert_stock_state` function as the app.
 - [ ] **Phase 2 -- Freshness/decay logic.** Confidence-timestamp-to-staleness computation, category-specific windows.
 - [ ] **Phase 3 -- Verification workflow.** Manual supplier verification (badge, admin tooling).
 - [ ] **Phase 4 -- Buyer search & compare.** Location-first search (PostGIS proximity), confidence indicators, side-by-side compare view.
@@ -80,3 +80,10 @@ This repo is being built in phases, in order — each one only makes sense once 
 - [ ] **Phase 6 -- Offline-tolerant buyer experience.** Cached search results with staleness banners, payload/image compression, data-saver mode.
 
 Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope until Phases 0-6 are proven with real suppliers in one or two dense zones.
+
+## Phase 1 notes
+
+- **Auth** is email/password via Supabase Auth (simplest zero-config option). Phone is captured separately during onboarding and used to match inbound SMS to a supplier — it is not a login credential yet.
+- **SMS webhook** lives at `POST /api/sms/webhook`, built against Africa's Talking's inbound-message shape (form-encoded `from`/`text`). Point your SMS gateway's inbound webhook URL at `https://<your-deployment>/api/sms/webhook` once you have a provider account. Message format: `STOCK <CODE> <QTY>`, e.g. `STOCK REBAR12 50` — codes are in `products.sms_code` (migration `0003`). Outbound confirmation replies are stubbed (logged, not sent) until a gateway API key is wired in — see `sendSmsReply` in `src/app/api/sms/webhook/route.ts`.
+- **Offline outbox** (`src/lib/offline/outbox.ts`) is plain IndexedDB, no dependency. Updates save locally first and sync automatically on reconnect; last-write-wins ordering is enforced server-side in `upsert_stock_state` (migration `0003`) by comparing client-supplied timestamps, so a late-syncing offline update can never clobber a newer one.
+- Run the new migrations (`0003`, `0004`) the same way as `0001`/`0002` — `supabase db push` or paste into the SQL Editor, in order.
