@@ -131,3 +131,12 @@ Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope 
 ---
 
 That's the full six-phase roadmap from the original blueprint. Everything past this point — payments, logistics, analytics, bulk CSV upload, multi-branch suppliers — is explicitly out of scope until this MVP is proven with real suppliers in one or two dense zones (see the blueprint's own "Next Steps" section).
+
+## Product taxonomy expansion (migration 0010)
+
+The catalog grew from 9 SKUs (rebar + cement only) to 152, adding six new categories: `aggregates_blocks`, `structural_steel`, `plumbing`, `electrical`, `roofing`, `finishing`, `doors_windows` — plus more rebar sizes and cement brands under the two original categories.
+
+- **Deduplication was checked twice**: once at generation time (a Python script asserted no collisions in `sub_category`, `name`, or `sms_code` against the existing 9 rows or within the new 143, before any SQL was written), and again at the database level via a new `products_sub_category_unique` constraint plus `on conflict (sub_category) do nothing` on the insert — so re-running the migration, or a future migration adding overlapping items, can't silently duplicate a product.
+- **Each new category got a freshness window** (migration 0005's category-specific decay logic extended, not replaced): `aggregates_blocks` 48h (high-turnover, same tier as rebar), `structural_steel` 72h (default), `plumbing`/`electrical` 96h, `roofing`/`finishing` 120h (same tier as cement), `doors_windows` 168h (slowest-moving, often made-to-order). These are starting guesses, not measured data — revisit once real suppliers are updating stock.
+- **SMS codes were deliberately not added for most of the 143 new products.** The SMS stock-update path only scales to a curated handful of SKUs a supplier can realistically remember or text without looking anything up — see the blueprint's rationale for starting narrow. Only the new rebar sizes (6/14/20/24/32mm) got `sms_code`s, matching the existing pattern. If specific new products turn out to be high-SMS-frequency in practice, add codes for those deliberately rather than all 143 at once.
+- Run migration `0010` the same way as the others (`supabase db push`) before it shows up in `/dashboard/add-listing` or `/search`.
