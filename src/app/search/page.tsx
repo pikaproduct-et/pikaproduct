@@ -5,7 +5,7 @@ export default async function SearchPage() {
   const supabase = await createClient();
   const { data: products } = await supabase
     .from("products")
-    .select("id, name, category, unit")
+    .select("id, name, name_am, category, unit")
     .order("category")
     .order("name");
 

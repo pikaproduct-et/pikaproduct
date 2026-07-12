@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { addListing } from "@/app/dashboard/add-listing/actions";
+import { bilingualName } from "@/lib/products/displayName";
 
 interface ProductOption {
   id: string;
   category: string;
   name: string;
+  name_am: string;
   unit: string;
 }
 
@@ -61,7 +63,7 @@ export function AddListingForm({ products }: { products: ProductOption[] }) {
           </option>
           {productsInCategory.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name} ({p.unit})
+              {bilingualName(p.name, p.name_am)} ({p.unit})
             </option>
           ))}
         </select>

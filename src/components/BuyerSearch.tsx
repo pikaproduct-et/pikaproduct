@@ -7,10 +7,12 @@ import { ContactButtons } from "@/components/ContactButtons";
 import { ReserveForm } from "@/components/ReserveForm";
 import { loadSearchCache, saveSearchCache } from "@/lib/offline/searchCache";
 import { relativeTime, type FreshnessStatus } from "@/lib/freshness/format";
+import { bilingualName } from "@/lib/products/displayName";
 
 interface ProductOption {
   id: string;
   name: string;
+  name_am: string;
   category: string;
   unit: string;
 }
@@ -25,6 +27,7 @@ interface SearchResult {
   distance_km: number | null;
   product_id: string;
   product_name: string;
+  product_name_am: string;
   product_unit: string;
   product_category: string;
   price_per_unit: number;
@@ -176,7 +179,7 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
             <option value="">All {category} products</option>
             {productsInCategory.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name} ({p.unit})
+                {bilingualName(p.name, p.name_am)} ({p.unit})
               </option>
             ))}
           </select>
@@ -243,7 +246,7 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-medium text-zinc-900 dark:text-zinc-50">
-                      {r.product_name}
+                      {bilingualName(r.product_name, r.product_name_am)}
                     </p>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">{r.business_name}</p>
                     <p className="text-xs text-zinc-400">

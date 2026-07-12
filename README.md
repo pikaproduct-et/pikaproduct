@@ -147,3 +147,13 @@ With 152 SKUs in the catalog, a single flat product dropdown stopped being usabl
 
 - Category is client-side-only filtering — it isn't submitted with the form; only the selected `product_id` is. The available product list itself (already-listed products excluded) is still fetched server-side in `page.tsx`, same as before.
 - If a supplier has already listed every product in a category, that category simply doesn't appear in the dropdown (it's derived from the filtered "available" list, not the full catalog).
+
+## Amharic product names (migration 0011)
+
+Since this is an Ethiopian-market product, every product now carries a native Amharic name alongside the English one — `products.name_am` (new column, `not null`), shown everywhere a product name is displayed as **"English (Amharic)"**.
+
+- **Separate column, not baked into `name`**: keeps English and Amharic independently searchable/sortable, and keeps `products.name` (used by SMS matching and existing sort/filter queries) untouched. `src/lib/products/displayName.ts` has the single `bilingualName()` formatter every UI surface calls, so the "English (Amharic)" format can't drift between components.
+- **`listing_status` and `search_listings`** (both re-created in this migration) now return `product_name_am` alongside `product_name`, so the supplier dashboard and buyer search/compare get the bilingual name in the same query — no second round-trip to `products`.
+- **Coverage is enforced at migration time**: a `do $$ ... raise exception ...` block fails the migration if any product is left without a translation, and `name_am` is set `not null` only after that check passes — a future product insert that forgets a translation will fail loudly rather than silently shipping English-only.
+- **Translation approach**: standard Ethiopian construction-trade terminology — native Amharic where a common native term exists, transliteration for modern technical terms without an established native equivalent (PPR, PVC, RHS, LED, aggregate, etc.), matching how these items are actually named in hardware shops and on construction sites today rather than a literal dictionary translation. Treat these as a solid first pass — worth a native-speaker review pass with real suppliers before this is customer-facing at scale, especially for the more technical/compound terms.
+- Run migration `0011` the same way as the others (`supabase db push`) before the Amharic names show up anywhere.

@@ -5,6 +5,7 @@ import { queueUpdate, registerAutoFlush, type FlushResult } from "@/lib/offline/
 import { FreshnessBadge } from "@/components/FreshnessBadge";
 import type { FreshnessStatus } from "@/lib/freshness/format";
 import type { Database } from "@/lib/types/database";
+import { bilingualName } from "@/lib/products/displayName";
 
 export type ListingStatusRow = Database["public"]["Views"]["listing_status"]["Row"];
 
@@ -36,7 +37,9 @@ function ListingRow({ listing }: { listing: ListingStatusRow }) {
     <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-medium text-zinc-900 dark:text-zinc-50">{listing.product_name}</p>
+          <p className="font-medium text-zinc-900 dark:text-zinc-50">
+            {bilingualName(listing.product_name, listing.product_name_am)}
+          </p>
           <p className="text-xs text-zinc-500">
             {listing.price_per_unit} {listing.currency} / {listing.product_unit}
             {listing.product_sms_code && (

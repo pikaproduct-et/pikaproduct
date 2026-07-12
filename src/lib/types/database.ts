@@ -41,6 +41,7 @@ export interface Database {
           category: string;
           sub_category: string | null;
           name: string;
+          name_am: string;
           unit: string;
           attributes: Record<string, unknown>;
           sms_code: string | null;
@@ -49,6 +50,7 @@ export interface Database {
         Insert: Partial<Database["public"]["Tables"]["products"]["Row"]> & {
           category: string;
           name: string;
+          name_am: string;
           unit: string;
         };
         Update: Partial<Database["public"]["Tables"]["products"]["Row"]>;
@@ -165,6 +167,7 @@ export interface Database {
           currency: string;
           is_active: boolean;
           product_name: string;
+          product_name_am: string;
           product_unit: string;
           product_category: string;
           product_sms_code: string | null;
@@ -197,6 +200,7 @@ export interface Database {
           distance_km: number | null;
           product_id: string;
           product_name: string;
+          product_name_am: string;
           product_unit: string;
           product_category: string;
           price_per_unit: number;
