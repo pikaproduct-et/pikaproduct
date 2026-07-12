@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { addListing } from "./actions";
+import { AddListingForm } from "@/components/AddListingForm";
 
 export default async function AddListingPage({
   searchParams,
@@ -60,59 +60,7 @@ export default async function AddListingPage({
             as the platform grows.
           </p>
         ) : (
-          <form action={addListing} className="space-y-4">
-            <div>
-              <label htmlFor="product_id" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Product
-              </label>
-              <select
-                id="product_id"
-                name="product_id"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
-              >
-                {available.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.unit})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label htmlFor="price_per_unit" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Price per unit (ETB)
-              </label>
-              <input
-                id="price_per_unit"
-                name="price_per_unit"
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            </div>
-            <div>
-              <label htmlFor="quantity" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Current quantity in stock
-              </label>
-              <input
-                id="quantity"
-                name="quantity"
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full rounded-md bg-zinc-900 px-4 py-3 text-base font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
-            >
-              Add to my listings
-            </button>
-          </form>
+          <AddListingForm products={available} />
         )}
       </div>
     </div>

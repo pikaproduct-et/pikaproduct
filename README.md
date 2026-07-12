@@ -140,3 +140,10 @@ The catalog grew from 9 SKUs (rebar + cement only) to 152, adding six new catego
 - **Each new category got a freshness window** (migration 0005's category-specific decay logic extended, not replaced): `aggregates_blocks` 48h (high-turnover, same tier as rebar), `structural_steel` 72h (default), `plumbing`/`electrical` 96h, `roofing`/`finishing` 120h (same tier as cement), `doors_windows` 168h (slowest-moving, often made-to-order). These are starting guesses, not measured data — revisit once real suppliers are updating stock.
 - **SMS codes were deliberately not added for most of the 143 new products.** The SMS stock-update path only scales to a curated handful of SKUs a supplier can realistically remember or text without looking anything up — see the blueprint's rationale for starting narrow. Only the new rebar sizes (6/14/20/24/32mm) got `sms_code`s, matching the existing pattern. If specific new products turn out to be high-SMS-frequency in practice, add codes for those deliberately rather than all 143 at once.
 - Run migration `0010` the same way as the others (`supabase db push`) before it shows up in `/dashboard/add-listing` or `/search`.
+
+## Add-listing UI: category-first product picker
+
+With 152 SKUs in the catalog, a single flat product dropdown stopped being usable. `/dashboard/add-listing` now uses `src/components/AddListingForm.tsx` (client component): a **Category** select filters the **Product** select beneath it, so a supplier picks their trade (e.g. `electrical`) before scanning a list of names, instead of scrolling through all 152 at once. This mirrors the pattern already used on the buyer side (`BuyerSearch.tsx`, Phase 4) rather than introducing a new UI convention.
+
+- Category is client-side-only filtering — it isn't submitted with the form; only the selected `product_id` is. The available product list itself (already-listed products excluded) is still fetched server-side in `page.tsx`, same as before.
+- If a supplier has already listed every product in a category, that category simply doesn't appear in the dropdown (it's derived from the filtered "available" list, not the full catalog).
