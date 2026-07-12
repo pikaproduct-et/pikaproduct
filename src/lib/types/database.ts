@@ -185,6 +185,7 @@ export interface Database {
           p_category: string | null;
           p_product_id: string | null;
           p_radius_km: number | null;
+          p_limit: number | null;
         };
         Returns: {
           listing_id: string;

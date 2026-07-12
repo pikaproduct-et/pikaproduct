@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FreshnessBadge } from "@/components/FreshnessBadge";
 import { ContactButtons } from "@/components/ContactButtons";
 import { ReserveForm } from "@/components/ReserveForm";
-import type { FreshnessStatus } from "@/lib/freshness/format";
+import { loadSearchCache, saveSearchCache } from "@/lib/offline/searchCache";
+import { relativeTime, type FreshnessStatus } from "@/lib/freshness/format";
 
 interface ProductOption {
   id: string;
@@ -50,10 +51,35 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
+  const [dataSaver, setDataSaver] = useState(false);
   const [results, setResults] = useState<SearchResult[] | null>(null);
+  const [resultsSavedAt, setResultsSavedAt] = useState<string | null>(null);
+  const [isCached, setIsCached] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [hasSearchedThisSession, setHasSearchedThisSession] = useState(false);
 
   const productsInCategory = products.filter((p) => p.category === category);
+
+  // Show the last successful search immediately on load — "last-fetched
+  // results cached and viewable ... if the buyer loses signal
+  // mid-session" (blueprint Section 1). This is what's on screen until
+  // the buyer runs a fresh search of their own.
+  // Reading localStorage (an external system) on mount and syncing it
+  // into state is exactly the documented use case for an effect — this
+  // can't be a lazy useState initializer instead, since this is a
+  // client component that's server-rendered first, and a lazy
+  // initializer wouldn't re-run on client hydration to pick up
+  // browser-only storage.
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const cached = loadSearchCache<SearchResult>();
+    if (cached) {
+      setResults(cached.results);
+      setResultsSavedAt(cached.savedAt);
+      setIsCached(true);
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function useMyLocation() {
     if (!("geolocation" in navigator)) {
@@ -70,22 +96,47 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
         setLocationDenied(true);
         setLocating(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      // Data saver skips GPS in favor of cheaper (faster, less battery,
+      // less data) network/cell-tower positioning — plenty accurate for
+      // "which supplier is nearby," not turn-by-turn navigation.
+      { enableHighAccuracy: !dataSaver, timeout: 10000 }
     );
   }
 
   async function search() {
     setSearching(true);
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc("search_listings", {
-      p_lat: coords?.lat ?? null,
-      p_lng: coords?.lng ?? null,
-      p_category: category || null,
-      p_product_id: productId || null,
-      p_radius_km: 25,
-    });
-    setResults(error ? [] : ((data as SearchResult[]) ?? []));
-    setSearching(false);
+    setHasSearchedThisSession(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("search_listings", {
+        p_lat: coords?.lat ?? null,
+        p_lng: coords?.lng ?? null,
+        p_category: category || null,
+        p_product_id: productId || null,
+        p_radius_km: 25,
+        p_limit: dataSaver ? 8 : 15,
+      });
+
+      if (error) throw error;
+
+      const fresh = (data as SearchResult[]) ?? [];
+      setResults(fresh);
+      setResultsSavedAt(new Date().toISOString());
+      setIsCached(false);
+      saveSearchCache(fresh);
+    } catch {
+      // Offline or request failed — fall back to whatever we last cached
+      // rather than showing a blank error. If there's nothing cached
+      // either, results stays whatever it was (likely null -> empty state).
+      const cached = loadSearchCache<SearchResult>();
+      if (cached) {
+        setResults(cached.results);
+        setResultsSavedAt(cached.savedAt);
+        setIsCached(true);
+      }
+    } finally {
+      setSearching(false);
+    }
   }
 
   return (
@@ -144,18 +195,40 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
           </p>
         )}
 
+        <label className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input
+            type="checkbox"
+            checked={dataSaver}
+            onChange={(e) => setDataSaver(e.target.checked)}
+            className="h-4 w-4 rounded border-zinc-300"
+          />
+          Data saver (fewer results, lower-accuracy location)
+        </label>
+
         <button
           type="button"
           onClick={search}
           disabled={searching}
           className="w-full rounded-md bg-zinc-900 px-4 py-3 text-base font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
         >
-          {searching ? "Searching…" : "Search"}
+          {searching ? "Searching…" : hasSearchedThisSession ? "Search again" : "Search"}
         </button>
       </div>
 
       {results !== null && (
         <div className="space-y-3">
+          {isCached && resultsSavedAt && (
+            <div className="flex items-center justify-between gap-2 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              <span>
+                {hasSearchedThisSession ? "You're offline — showing" : "Showing"} results from{" "}
+                {relativeTime(resultsSavedAt)}.
+              </span>
+              <button type="button" onClick={search} className="whitespace-nowrap underline">
+                Refresh
+              </button>
+            </div>
+          )}
+
           {results.length === 0 ? (
             <p className="rounded-lg border border-zinc-200 bg-white p-4 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
               No verified suppliers found{coords ? " within 25 km" : ""}. Try a different

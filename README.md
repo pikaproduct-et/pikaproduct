@@ -77,7 +77,7 @@ This repo is being built in phases, in order — each one only makes sense once 
 - [x] **Phase 3 -- Verification workflow.** Admin allowlist + RLS-enforced verify/reject tooling at `/admin/suppliers`.
 - [x] **Phase 4 -- Buyer search & compare.** Public `/search` page, `search_listings` PostGIS proximity function, freshness badges reused from Phase 2, click-to-call/WhatsApp.
 - [x] **Phase 5 -- Reservation/inquiry flow.** `reservations` table (account-free buyer inserts, RLS-locked to pending/unresponded), reserve form on search results, supplier inbox at `/dashboard/inquiries` with accept/decline.
-- [ ] **Phase 6 -- Offline-tolerant buyer experience.** Cached search results with staleness banners, payload/image compression, data-saver mode.
+- [x] **Phase 6 -- Offline-tolerant buyer experience.** localStorage cache of the last search with an honest staleness banner, aggressive result pagination, data-saver toggle.
 
 Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope until Phases 0-6 are proven with real suppliers in one or two dense zones.
 
@@ -117,3 +117,17 @@ Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope 
 - **The insert policy's `WITH CHECK` is intentionally strict**: `status = 'pending' and responded_at is null and responded_by is null`, regardless of what a caller sends. Since buyers submit without an account using the public anon key, RLS — not the app UI — is what stops someone from directly inserting a pre-accepted reservation via the REST API.
 - **SMS notification on a new inquiry is stubbed** the same way the Phase 1 webhook confirmations are — logged via the shared `sendSms()` helper (`src/lib/sms/notify.ts`, refactored out of the webhook route so both flows share one place to wire up a real gateway later).
 - Run migration `0008` the same way as the others (`supabase db push`) before testing.
+
+## Phase 6 notes
+
+- **`src/lib/offline/searchCache.ts`** caches only the buyer's *last* successful search (single slot, localStorage) — not a general offline data layer. The point, per the blueprint, is "don't show a blank screen if the buyer loses signal mid-session," not building full offline browsing.
+- **The staleness banner never hides that data is old.** If a fresh search fails (offline, or the request just errors), `/search` falls back to the cached results and says so explicitly with a relative-time label and a manual Refresh button — matching the blueprint's "don't hide staleness from the buyer; surface it."
+- **No polling, no WebSockets** — deliberately. Refresh is always a manual, explicit action (button tap), per the blueprint's guidance that persistent connections aren't worth the infra cost or battery/data drain at this stage.
+- **`search_listings` now caps results** at `p_limit` (default 15, data saver mode requests 8, hard ceiling 50 server-side regardless of what's requested) instead of returning everything that matches.
+- **Data saver mode** also switches geolocation to `enableHighAccuracy: false` — cheaper network/cell-tower positioning instead of GPS, which is plenty accurate for "which supplier is nearby" and lighter on battery/data.
+- **Image compression from the original blueprint guidance doesn't apply yet** — there are no listing photos anywhere in the current schema, so there's nothing to compress. Worth revisiting if/when supplier photos are added.
+- Run migration `0009` the same way as the others (`supabase db push`) before testing.
+
+---
+
+That's the full six-phase roadmap from the original blueprint. Everything past this point — payments, logistics, analytics, bulk CSV upload, multi-branch suppliers — is explicitly out of scope until this MVP is proven with real suppliers in one or two dense zones (see the blueprint's own "Next Steps" section).
