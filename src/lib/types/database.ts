@@ -147,6 +147,33 @@ export interface Database {
       };
     };
     Functions: {
+      search_listings: {
+        Args: {
+          p_lat: number | null;
+          p_lng: number | null;
+          p_category: string | null;
+          p_product_id: string | null;
+          p_radius_km: number | null;
+        };
+        Returns: {
+          listing_id: string;
+          supplier_id: string;
+          business_name: string;
+          phone: string;
+          sub_city: string | null;
+          woreda: string | null;
+          distance_km: number | null;
+          product_id: string;
+          product_name: string;
+          product_unit: string;
+          product_category: string;
+          price_per_unit: number;
+          currency: string;
+          quantity: number | null;
+          confidence_timestamp: string | null;
+          freshness_status: "fresh" | "aging" | "stale" | "unconfirmed";
+        }[];
+      };
       is_admin: {
         Args: Record<string, never>;
         Returns: boolean;

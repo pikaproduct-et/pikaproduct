@@ -75,7 +75,7 @@ This repo is being built in phases, in order — each one only makes sense once 
 - [x] **Phase 1 -- Supplier stock-update flow.** Auth + onboarding, one-tap mobile update dashboard, offline-first IndexedDB outbox + auto-sync, SMS webhook fallback hitting the same `upsert_stock_state` function as the app.
 - [x] **Phase 2 -- Freshness/decay logic.** Category-specific decay windows on `products`, `listing_status` view computing fresh/aging/stale/unconfirmed at read time, freshness badge on the supplier dashboard.
 - [x] **Phase 3 -- Verification workflow.** Admin allowlist + RLS-enforced verify/reject tooling at `/admin/suppliers`.
-- [ ] **Phase 4 -- Buyer search & compare.** Location-first search (PostGIS proximity), confidence indicators, side-by-side compare view.
+- [x] **Phase 4 -- Buyer search & compare.** Public `/search` page, `search_listings` PostGIS proximity function, freshness badges reused from Phase 2, click-to-call/WhatsApp.
 - [ ] **Phase 5 -- Reservation/inquiry flow.** Structured reserve/pickup requests, click-to-call/WhatsApp.
 - [ ] **Phase 6 -- Offline-tolerant buyer experience.** Cached search results with staleness banners, payload/image compression, data-saver mode.
 
@@ -103,3 +103,10 @@ Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope 
   Then visit `/admin/suppliers` while signed in.
 - **Authorization is RLS-enforced, not just UI-gated**: `/admin/suppliers` uses the caller's own authenticated Supabase client (not the service-role client) for every read and write. The `is_admin()` Postgres function backs the RLS policies on `suppliers` (migration `0006`), so even a bug in the page/action code couldn't let a non-admin see or edit supplier data — the database itself refuses the query.
 - Verify/reject just sets `verification_status` (+ `verified_at`/`verified_by`); it doesn't lock a pending or rejected supplier out of their dashboard — per the blueprint, they can keep updating stock while waiting on review.
+
+## Phase 4 notes
+
+- **`search_listings`** (migration `0007`) is the single query behind `/search` — it joins `listing_status` (Phase 2) with `suppliers` for location/contact info, computes distance with PostGIS when the buyer shares their location, and works identically whether you leave the product filter open (browse a category) or pick one exact product (true SKU-level compare, per the blueprint's "aha moment"). No separate compare endpoint needed.
+- **No buyer account required** — `/search` is public, calling the RPC with the anon key. This matches the blueprint's MVP scope: buyers browse and contact suppliers directly (call/WhatsApp), no checkout yet. Reservation requests are Phase 5.
+- **Location is optional, not required**: if a buyer declines geolocation, results still return (unsorted by distance, `distance_km` is `null`) rather than blocking search entirely.
+- Run migration `0007` the same way as the others (`supabase db push`) before testing.

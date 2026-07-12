@@ -20,12 +20,20 @@ export default function Home() {
             {supabaseConfigured ? "configured" : "not set — see .env.example"}
           </span>
         </div>
-        <Link
-          href="/login"
-          className="rounded-md bg-zinc-900 px-5 py-3 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
-        >
-          Supplier sign in
-        </Link>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/search"
+            className="rounded-md bg-zinc-900 px-5 py-3 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900"
+          >
+            Find materials
+          </Link>
+          <Link
+            href="/login"
+            className="rounded-md border border-zinc-300 px-5 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900"
+          >
+            Supplier sign in
+          </Link>
+        </div>
       </main>
     </div>
   );
