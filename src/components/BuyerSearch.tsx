@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { FreshnessBadge } from "@/components/FreshnessBadge";
 import { ContactButtons } from "@/components/ContactButtons";
+import { ReserveForm } from "@/components/ReserveForm";
 import type { FreshnessStatus } from "@/lib/freshness/format";
 
 interface ProductOption {
@@ -197,6 +198,15 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
 
                 <div className="mt-3">
                   <ContactButtons phone={r.phone} />
+                </div>
+                <div className="mt-2">
+                  <ReserveForm
+                    listingId={r.listing_id}
+                    productName={r.product_name}
+                    unit={r.product_unit}
+                    availableQuantity={r.quantity}
+                    businessName={r.business_name}
+                  />
                 </div>
               </div>
             ))

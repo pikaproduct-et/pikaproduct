@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { applyStockUpdate } from "@/lib/stock/update-stock";
+import { sendSms } from "@/lib/sms/notify";
 
 /**
  * Inbound SMS webhook — the "structured SMS format" fallback described in
@@ -36,13 +37,6 @@ function parseCommand(text: string): { code: string; quantity: number } | null {
   return { code: match[1].toUpperCase(), quantity };
 }
 
-/** Placeholder for the outbound confirmation SMS. Wire this up to your
- * SMS gateway's send-message API once you have provider credentials —
- * intentionally not implemented here since it needs a live account. */
-async function sendSmsReply(to: string, message: string) {
-  console.log(`[sms-reply stub] to=${to} message=${message}`);
-}
-
 export async function POST(request: Request) {
   const contentType = request.headers.get("content-type") ?? "";
   let from: string | null = null;
@@ -64,7 +58,7 @@ export async function POST(request: Request) {
 
   const command = parseCommand(text);
   if (!command) {
-    await sendSmsReply(from, 'Sorry, we could not read that. Format: "STOCK <CODE> <QTY>"');
+    await sendSms(from, 'Sorry, we could not read that. Format: "STOCK <CODE> <QTY>"');
     return NextResponse.json({ status: "ignored", reason: "unparseable" });
   }
 
@@ -78,7 +72,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!supplier) {
-    await sendSmsReply(from, "This number isn't registered as a PikaProduct supplier yet.");
+    await sendSms(from, "This number isn't registered as a PikaProduct supplier yet.");
     return NextResponse.json({ status: "ignored", reason: "unknown_supplier" });
   }
 
@@ -89,7 +83,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!product) {
-    await sendSmsReply(from, `Unknown product code "${command.code}".`);
+    await sendSms(from, `Unknown product code "${command.code}".`);
     return NextResponse.json({ status: "ignored", reason: "unknown_product" });
   }
 
@@ -101,7 +95,7 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (!listing) {
-    await sendSmsReply(
+    await sendSms(
       from,
       `You haven't listed ${product.name} yet — add it in the app first, then text updates.`
     );
@@ -115,6 +109,6 @@ export async function POST(request: Request) {
     source: "sms",
   });
 
-  await sendSmsReply(from, `Updated ${product.name} to ${command.quantity}. Thanks!`);
+  await sendSms(from, `Updated ${product.name} to ${command.quantity}. Thanks!`);
   return NextResponse.json({ status: "ok" });
 }

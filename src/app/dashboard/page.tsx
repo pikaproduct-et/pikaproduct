@@ -31,6 +31,12 @@ export default async function DashboardPage() {
     .eq("supplier_id", supplier.id)
     .eq("is_active", true);
 
+  const { count: pendingInquiries } = await supabase
+    .from("reservations")
+    .select("id, listing:listings!inner(supplier_id)", { count: "exact", head: true })
+    .eq("status", "pending")
+    .eq("listing.supplier_id", supplier.id);
+
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 dark:bg-black">
       <div className="mx-auto max-w-lg space-y-6">
@@ -50,12 +56,20 @@ export default async function DashboardPage() {
           </form>
         </header>
 
-        <Link
-          href="/dashboard/add-listing"
-          className="block w-full rounded-md border border-dashed border-zinc-300 px-4 py-3 text-center text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
-        >
-          + Add a product to your listings
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/dashboard/add-listing"
+            className="flex-1 rounded-md border border-dashed border-zinc-300 px-4 py-3 text-center text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-900"
+          >
+            + Add a product
+          </Link>
+          <Link
+            href="/dashboard/inquiries"
+            className="flex-1 rounded-md border border-zinc-300 px-4 py-3 text-center text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-900"
+          >
+            Inquiries{pendingInquiries ? ` (${pendingInquiries})` : ""}
+          </Link>
+        </div>
 
         <StockDashboard listings={listings ?? []} />
       </div>

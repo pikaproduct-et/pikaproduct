@@ -76,7 +76,7 @@ This repo is being built in phases, in order — each one only makes sense once 
 - [x] **Phase 2 -- Freshness/decay logic.** Category-specific decay windows on `products`, `listing_status` view computing fresh/aging/stale/unconfirmed at read time, freshness badge on the supplier dashboard.
 - [x] **Phase 3 -- Verification workflow.** Admin allowlist + RLS-enforced verify/reject tooling at `/admin/suppliers`.
 - [x] **Phase 4 -- Buyer search & compare.** Public `/search` page, `search_listings` PostGIS proximity function, freshness badges reused from Phase 2, click-to-call/WhatsApp.
-- [ ] **Phase 5 -- Reservation/inquiry flow.** Structured reserve/pickup requests, click-to-call/WhatsApp.
+- [x] **Phase 5 -- Reservation/inquiry flow.** `reservations` table (account-free buyer inserts, RLS-locked to pending/unresponded), reserve form on search results, supplier inbox at `/dashboard/inquiries` with accept/decline.
 - [ ] **Phase 6 -- Offline-tolerant buyer experience.** Cached search results with staleness banners, payload/image compression, data-saver mode.
 
 Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope until Phases 0-6 are proven with real suppliers in one or two dense zones.
@@ -110,3 +110,10 @@ Payments, logistics, analytics, and bulk CSV upload are explicitly out of scope 
 - **No buyer account required** — `/search` is public, calling the RPC with the anon key. This matches the blueprint's MVP scope: buyers browse and contact suppliers directly (call/WhatsApp), no checkout yet. Reservation requests are Phase 5.
 - **Location is optional, not required**: if a buyer declines geolocation, results still return (unsorted by distance, `distance_km` is `null`) rather than blocking search entirely.
 - Run migration `0007` the same way as the others (`supabase db push`) before testing.
+
+## Phase 5 notes
+
+- **Still not a checkout** — accepting a reservation only changes its status; it does not touch `stock_state` or decrement quantity. Per the blueprint, automated stock decrement tied to completed transactions is deliberately out of scope until payments/logistics exist (Phase 2-of-the-original-roadmap territory), which is well past Phase 6.
+- **The insert policy's `WITH CHECK` is intentionally strict**: `status = 'pending' and responded_at is null and responded_by is null`, regardless of what a caller sends. Since buyers submit without an account using the public anon key, RLS — not the app UI — is what stops someone from directly inserting a pre-accepted reservation via the REST API.
+- **SMS notification on a new inquiry is stubbed** the same way the Phase 1 webhook confirmations are — logged via the shared `sendSms()` helper (`src/lib/sms/notify.ts`, refactored out of the webhook route so both flows share one place to wire up a real gateway later).
+- Run migration `0008` the same way as the others (`supabase db push`) before testing.

@@ -123,6 +123,37 @@ export interface Database {
         Update: Partial<{ user_id: string; created_at: string }>;
         Relationships: [];
       };
+      reservations: {
+        Row: {
+          id: string;
+          listing_id: string;
+          buyer_name: string;
+          buyer_phone: string;
+          quantity_requested: number;
+          pickup_within_hours: number;
+          note: string | null;
+          status: "pending" | "accepted" | "declined";
+          created_at: string;
+          responded_at: string | null;
+          responded_by: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["reservations"]["Row"]> & {
+          listing_id: string;
+          buyer_name: string;
+          buyer_phone: string;
+          quantity_requested: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["reservations"]["Row"]>;
+        Relationships: [
+          {
+            foreignKeyName: "reservations_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       listing_status: {
