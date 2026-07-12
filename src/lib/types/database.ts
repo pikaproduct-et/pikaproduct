@@ -111,6 +111,18 @@ export interface Database {
           },
         ];
       };
+      admins: {
+        Row: {
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id: string;
+          created_at?: string;
+        };
+        Update: Partial<{ user_id: string; created_at: string }>;
+        Relationships: [];
+      };
     };
     Views: {
       listing_status: {
@@ -135,6 +147,10 @@ export interface Database {
       };
     };
     Functions: {
+      is_admin: {
+        Args: Record<string, never>;
+        Returns: boolean;
+      };
       upsert_stock_state: {
         Args: {
           p_listing_id: string;
