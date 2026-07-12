@@ -7,7 +7,7 @@ import { ContactButtons } from "@/components/ContactButtons";
 import { ReserveForm } from "@/components/ReserveForm";
 import { loadSearchCache, saveSearchCache } from "@/lib/offline/searchCache";
 import { relativeTime, type FreshnessStatus } from "@/lib/freshness/format";
-import { bilingualName } from "@/lib/products/displayName";
+import { bilingualName, formatCategoryLabel, matchesProductQuery } from "@/lib/products/displayName";
 
 interface ProductOption {
   id: string;
@@ -51,6 +51,7 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
 
   const [category, setCategory] = useState(categories[0] ?? "");
   const [productId, setProductId] = useState<string>("");
+  const [productQuery, setProductQuery] = useState("");
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationDenied, setLocationDenied] = useState(false);
@@ -62,6 +63,17 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
   const [hasSearchedThisSession, setHasSearchedThisSession] = useState(false);
 
   const productsInCategory = products.filter((p) => p.category === category);
+
+  // With 152 SKUs across 9 categories, guessing the right category
+  // first is slower than just typing what you're after. A non-empty
+  // search box searches every product regardless of category (English
+  // or Amharic name); an empty box falls back to the category-scoped
+  // list, same as before.
+  const trimmedQuery = productQuery.trim();
+  const searchMatches = trimmedQuery
+    ? products.filter((p) => matchesProductQuery(p.name, p.name_am, trimmedQuery))
+    : null;
+  const productOptions = searchMatches ?? productsInCategory;
 
   // Show the last successful search immediately on load — "last-fetched
   // results cached and viewable ... if the buyer loses signal
@@ -146,40 +158,82 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
     <div className="space-y-4">
       <div className="space-y-3 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <div>
+          <label htmlFor="product-search" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Search products
+          </label>
+          <input
+            id="product-search"
+            type="text"
+            value={productQuery}
+            onChange={(e) => {
+              setProductQuery(e.target.value);
+              setProductId("");
+            }}
+            placeholder="Type a product name — English or Amharic…"
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
+          />
+          {trimmedQuery && searchMatches?.length === 0 && (
+            <p className="mt-1 text-xs text-amber-600">
+              No products match &quot;{trimmedQuery}&quot;.
+            </p>
+          )}
+        </div>
+
+        <div>
           <label htmlFor="category" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Category
           </label>
           <select
             id="category"
             value={category}
+            disabled={!!trimmedQuery}
             onChange={(e) => {
               setCategory(e.target.value);
               setProductId("");
             }}
-            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base capitalize dark:border-zinc-700 dark:bg-zinc-900"
+            className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900"
           >
             {categories.map((c) => (
-              <option key={c} value={c} className="capitalize">
-                {c}
+              <option key={c} value={c}>
+                {formatCategoryLabel(c)}
               </option>
             ))}
           </select>
+          {trimmedQuery && (
+            <p className="mt-1 text-xs text-zinc-400">Clear the search box to browse by category instead.</p>
+          )}
         </div>
 
         <div>
           <label htmlFor="product" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Product (optional — leave as &quot;All&quot; to compare the whole category)
+            {trimmedQuery
+              ? "Matching products"
+              : "Product (optional — leave as \"All\" to compare the whole category)"}
           </label>
           <select
             id="product"
             value={productId}
-            onChange={(e) => setProductId(e.target.value)}
+            onChange={(e) => {
+              const id = e.target.value;
+              setProductId(id);
+              // Search spans every category, so picking a match needs
+              // to sync the category filter behind it — otherwise a
+              // later "Search" click (or clearing the query) would use
+              // whatever category happened to be selected before.
+              if (searchMatches) {
+                const picked = products.find((p) => p.id === id);
+                if (picked) setCategory(picked.category);
+              }
+            }}
             className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-3 text-base dark:border-zinc-700 dark:bg-zinc-900"
           >
-            <option value="">All {category} products</option>
-            {productsInCategory.map((p) => (
+            <option value="" disabled={!!trimmedQuery}>
+              {trimmedQuery ? "Select a product…" : `All ${formatCategoryLabel(category)} products`}
+            </option>
+            {productOptions.map((p) => (
               <option key={p.id} value={p.id}>
                 {bilingualName(p.name, p.name_am)} ({p.unit})
+                {trimmedQuery ? ` — ${formatCategoryLabel(p.category)}` : ""}
               </option>
             ))}
           </select>
@@ -211,7 +265,7 @@ export function BuyerSearch({ products }: { products: ProductOption[] }) {
         <button
           type="button"
           onClick={search}
-          disabled={searching}
+          disabled={searching || (!!trimmedQuery && !productId)}
           className="w-full rounded-md bg-zinc-900 px-4 py-3 text-base font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900"
         >
           {searching ? "Searching…" : hasSearchedThisSession ? "Search again" : "Search"}
